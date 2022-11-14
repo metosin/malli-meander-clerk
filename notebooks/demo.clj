@@ -21,11 +21,7 @@
  1,Sauli,Niinistö,Mariankatu 2,coffee,buns,00170
  2,Sanna,Marin,Kesärannantie 1,juice,pasta,00250")
 
-#_(require '[tech.v3.dataset :as ds])
-
 (def orders (ds/->dataset "orders.csv" {:key-fn keyword, :parser-fn :string}))
-
-#_(require '[meander.util.epsilon])
 
 orders
 ;| :id | :firstName | :lastName |         :street | :item1 | :item2 |  :zip |
@@ -39,8 +35,6 @@ orders
 ;|   1 |      Sauli |  Niinistö | coffee |   buns |
 ;|   2 |      Sanna |     Marin |  juice |  pasta |
 
-#_(require '[malli.provider :as mp])
-
 (def CSVOrder (mp/provide (ds/rows orders)))
 
 CSVOrder
@@ -52,8 +46,6 @@ CSVOrder
 ; [:item1 :string]
 ; [:item2 :string]
 ; [:zip :string]]
-
-#_(require '[malli.core :as m])
 
 (->> (ds/rows orders)
      (map (m/validator CSVOrder))
@@ -71,8 +63,6 @@ CSVOrder
    [:address [:map
               [:street :string]
               [:zip :string]]]])
-
-#_(require '[malli.generator :as mg])
 
 (mg/generate Order {:seed 3})
 ;{:id #uuid"b36c2541-2db8-4d75-b87d-3413bdacdb7d",
@@ -98,8 +88,6 @@ CSVOrder
 (defn load-csv [file]
   (ds/rows (ds/->dataset file {:key-fn keyword, :parser-fn :string})))
 
-#_(require '[malli.transform :as mt])
-
 (def validate-input (coercer CSVOrder (mt/no-op-transformer)))
 
 (->> (load-csv "orders.csv")
@@ -118,8 +106,6 @@ CSVOrder
 ;  :item1 "juice",
 ;  :item2 "pasta",
 ;  :zip "00250"})
-
-#_(require '[meander.match.epsilon :as mme])
 
 (defn matcher [{:keys [pattern expression]}]
   (eval `(fn [data#]
@@ -226,8 +212,6 @@ CSVOrder
                             :address {:street ?street
                                       :zip ?zip}}}})
 
-#_(require '[clojure.edn :as edn])
-
 (-> transformation
     (pr-str)
     (edn/read-string)
@@ -276,7 +260,6 @@ CSVOrder
                      :zip zip}
            :delivered false}) x))
 
-#_(require '[hato.client :as hc])
 
 (def data
   (let [!id (atom 0)
