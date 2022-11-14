@@ -1,4 +1,14 @@
-(ns demo)
+(ns demo
+  (:require [clojure.edn :as edn]
+            [malli.core :as m]
+            [malli.transform :as mt]
+            [malli.generator :as mg]
+            [tech.v3.dataset :as ds]
+            [meander.util.epsilon]
+            [meander.match.epsilon :as mme]
+            [malli.provider :as mp]
+            [hato.client :as hc]
+            [criterium.core :as cc]))
 
 (-> {:id "1"}
     (update :id parse-long)
@@ -11,11 +21,11 @@
  1,Sauli,Niinistö,Mariankatu 2,coffee,buns,00170
  2,Sanna,Marin,Kesärannantie 1,juice,pasta,00250")
 
-(require '[tech.v3.dataset :as ds])
+#_(require '[tech.v3.dataset :as ds])
 
 (def orders (ds/->dataset "orders.csv" {:key-fn keyword, :parser-fn :string}))
 
-(require '[meander.util.epsilon])
+#_(require '[meander.util.epsilon])
 
 orders
 ;| :id | :firstName | :lastName |         :street | :item1 | :item2 |  :zip |
@@ -29,7 +39,7 @@ orders
 ;|   1 |      Sauli |  Niinistö | coffee |   buns |
 ;|   2 |      Sanna |     Marin |  juice |  pasta |
 
-(require '[malli.provider :as mp])
+#_(require '[malli.provider :as mp])
 
 (def CSVOrder (mp/provide (ds/rows orders)))
 
@@ -43,7 +53,7 @@ CSVOrder
 ; [:item2 :string]
 ; [:zip :string]]
 
-(require '[malli.core :as m])
+#_(require '[malli.core :as m])
 
 (->> (ds/rows orders)
      (map (m/validator CSVOrder))
@@ -62,7 +72,7 @@ CSVOrder
               [:street :string]
               [:zip :string]]]])
 
-(require '[malli.generator :as mg])
+#_(require '[malli.generator :as mg])
 
 (mg/generate Order {:seed 3})
 ;{:id #uuid"b36c2541-2db8-4d75-b87d-3413bdacdb7d",
@@ -88,7 +98,7 @@ CSVOrder
 (defn load-csv [file]
   (ds/rows (ds/->dataset file {:key-fn keyword, :parser-fn :string})))
 
-(require '[malli.transform :as mt])
+#_(require '[malli.transform :as mt])
 
 (def validate-input (coercer CSVOrder (mt/no-op-transformer)))
 
@@ -109,7 +119,7 @@ CSVOrder
 ;  :item2 "pasta",
 ;  :zip "00250"})
 
-(require '[meander.match.epsilon :as mme])
+#_(require '[meander.match.epsilon :as mme])
 
 (defn matcher [{:keys [pattern expression]}]
   (eval `(fn [data#]
@@ -216,7 +226,7 @@ CSVOrder
                             :address {:street ?street
                                       :zip ?zip}}}})
 
-(require '[clojure.edn :as edn])
+#_(require '[clojure.edn :as edn])
 
 (-> transformation
     (pr-str)
@@ -266,7 +276,7 @@ CSVOrder
                      :zip zip}
            :delivered false}) x))
 
-(require '[hato.client :as hc])
+#_(require '[hato.client :as hc])
 
 (def data
   (let [!id (atom 0)
