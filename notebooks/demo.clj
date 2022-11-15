@@ -1,12 +1,16 @@
 (ns demo)
 
+;; # Transforming Data With Malli and Meander
+;; Source code for the post: https://www.metosin.fi/blog/transforming-data-with-malli-and-meander/
+
+(require '[nextjournal.clerk :as clerk])
+
 (-> {:id "1"}
     (update :id parse-long)
     (assoc :name "Elegia")
-    (update :tags (fnil conj #{}) "poem"))
-; => {:id 1, :name "Elegia", :tags #{"poem"}}
+    (update :tags (fnil conj #{}) "poem")
+    (clerk/code))
 
-;; create data-file
 (spit "orders.csv" "id,firstName,lastName,street,item1,item2,zip
  1,Sauli,Niinistö,Mariankatu 2,coffee,buns,00170
  2,Sanna,Marin,Kesärannantie 1,juice,pasta,00250")
@@ -15,40 +19,21 @@
 
 (def orders (ds/->dataset "orders.csv" {:key-fn keyword, :parser-fn :string}))
 
-(require '[meander.util.epsilon])
+(clerk/table orders)
 
-orders
-;| :id | :firstName | :lastName |         :street | :item1 | :item2 |  :zip |
-;|----:|------------|-----------|-----------------|--------|--------|-------|
-;|   1 |      Sauli |  Niinistö |    Mariankatu 2 | coffee |   buns | 00170 |
-;|   2 |      Sanna |     Marin | Kesärannantie 1 |  juice |  pasta | 00250 |
-
-(dissoc orders :zip :street)
-;| :id | :firstName | :lastName | :item1 | :item2 |
-;|----:|------------|-----------|--------|--------|
-;|   1 |      Sauli |  Niinistö | coffee |   buns |
-;|   2 |      Sanna |     Marin |  juice |  pasta |
+(clerk/table (dissoc orders :zip :street))
 
 (require '[malli.provider :as mp])
 
 (def CSVOrder (mp/provide (ds/rows orders)))
 
-CSVOrder
-;[:map
-; [:id :string]
-; [:firstName :string]
-; [:lastName :string]
-; [:street :string]
-; [:item1 :string]
-; [:item2 :string]
-; [:zip :string]]
+(clerk/code CSVOrder)
 
 (require '[malli.core :as m])
 
 (->> (ds/rows orders)
      (map (m/validator CSVOrder))
      (every? true?))
-; => true
 
 (def Order
   [:map {:db/table "Orders"}
@@ -64,21 +49,16 @@ CSVOrder
 
 (require '[malli.generator :as mg])
 
-(mg/generate Order {:seed 3})
-;{:id #uuid"b36c2541-2db8-4d75-b87d-3413bdacdb7d",
-; :source "online",
-; :source-id "",
-; :items [:y!Aw11EA :PUPjb-_T :DPXc!g:e],
-; :delivered true,
-; :address {:street "MG7rxPm6jywJSPqEs"
-;           :zip "116iS2c74JGKv90oAhJP7aq7iL8iyk"}}
+(clerk/code (mg/generate Order {:seed 3}))
 
 (defn coercer [schema transformer]
   (let [valid? (m/validator schema)
         decode (m/decoder schema transformer)
         explain (m/explainer schema)]
     (fn [x]
+      (prn "1:" x)
       (let [value (decode x)]
+        (prn "2:" value)
         (when-not (valid? value)
           (m/-fail! ::invalid-input {:value value
                                      :schema schema
@@ -93,21 +73,9 @@ CSVOrder
 (def validate-input (coercer CSVOrder (mt/no-op-transformer)))
 
 (->> (load-csv "orders.csv")
-     (map validate-input))
-;({:id "1",
-;  :firstName "Sauli",
-;  :lastName "Niinistö",
-;  :street "Mariankatu 2",
-;  :item1 "coffee",
-;  :item2 "buns",
-;  :zip "00170"}
-; {:id "2",
-;  :firstName "Sanna",
-;  :lastName "Marin",
-;  :street "Kesärannantie 1",
-;  :item1 "juice",
-;  :item2 "pasta",
-;  :zip "00250"})
+     (map validate-input)
+     (clerk/code))
+
 
 (require '[meander.match.epsilon :as mme])
 
@@ -131,27 +99,14 @@ CSVOrder
                   :source "csv"
                   :source-id ?id
                   :name (str ?firstName " " ?lastName)
-                  :items (vector !item)
+                  :items !item
                   :address {:street ?street
                             :zip ?zip}}}))
 
-(load-csv "orders.csv")
-
 (->> (load-csv "orders.csv")
      (map validate-input)
-     (map transform))
-;({:id #uuid"7f765cf9-24a2-4bd8-950f-35f6c8724c65",
-;  :source "csv",
-;  :source-id "1",
-;  :name "Sauli Niinistö",
-;  :items #{"buns" "coffee"},
-;  :address {:street "Mariankatu 2", :zip "00170"}}
-; {:id #uuid"3fc14e81-170f-4234-983a-9d9cc2a47ed5",
-;  :source "csv",
-;  :source-id "2",
-;  :name "Sanna Marin",
-;  :items #{"pasta" "juice"},
-;  :address {:street "Kesärannantie 1", :zip "00250"}})
+     (map transform)
+     (clerk/code))
 
 (def validate-output
   (coercer
@@ -160,25 +115,11 @@ CSVOrder
     (mt/string-transformer)
     (mt/default-value-transformer))))
 
-
 (->> (load-csv "orders.csv")
      (map validate-input)
      (map transform)
-     (map validate-output))
-;({:id #uuid"a3fae918-9b5a-4f54-9d32-4c22b74e8922",
-;  :source "csv",
-;  :source-id "1",
-;  :name "Sauli Niinistö",
-;  :items #{:buns :coffee},
-;  :address {:street "Mariankatu 2", :zip "00170"},
-;  :delivered false}
-; {:id #uuid"5f4cb486-6990-457b-8fca-bebc25b23277",
-;  :source "csv",
-;  :source-id "2",
-;  :name "Sanna Marin",
-;  :items #{:pasta :juice},
-;  :address {:street "Kesärannantie 1", :zip "00250"},
-;  :delivered false})
+     (map validate-output)
+     (clerk/code))
 
 (def transformation
   {:registry {:csv/order [:map
@@ -222,7 +163,6 @@ CSVOrder
     (pr-str)
     (edn/read-string)
     (= transformation))
-; => true
 
 (defn transformer [{:keys [registry mappings]} source-transformer target-transformer]
   (let [{:keys [source target]} mappings
@@ -239,21 +179,7 @@ CSVOrder
     (mt/string-transformer)
     (mt/default-value-transformer))))
 
-(pipeline (load-csv "orders.csv"))
-;({:id #uuid"e809652f-8399-467e-9bab-a0e2bba1548e",
-;  :source "csv",
-;  :source-id "1",
-;  :name "Sauli Niinistö",
-;  :items #{:buns :coffee},
-;  :address {:street "Mariankatu 2", :zip "00170"},
-;  :delivered false}
-; {:id #uuid"fc255810-7235-43ba-93bb-e5abc7c78168",
-;  :source "csv",
-;  :source-id "2",
-;  :name "Sanna Marin",
-;  :items #{:pasta :juice},
-;  :address {:street "Kesärannantie 1", :zip "00250"},
-;  :delivered false})
+(clerk/code (pipeline (load-csv "orders.csv")))
 
 (defn clojure-transformer [x]
   (mapv (fn [{:keys [id firstName lastName street item1 item2 zip]}]
@@ -286,21 +212,7 @@ CSVOrder
                  :item2 (rand-item)
                  :zip (-> user :location :postcode str)})))))
 
-(take 2 data)
-;({:id "1"
-;  :firstName "Heldo"
-;  :lastName "Campos"
-;  :street "Rua Três 9120"
-;  :item1 "bun"
-;  :item2 "juice"
-;  :zip "73921"}
-; {:id "2",
-;  :firstName "Candice",
-;  :lastName "Long",
-;  :street "Northaven Rd 4744",
-;  :item1 "pasta",
-;  :item2 "coffee",
-;  :zip "25478"})
+(clerk/code (take 2 data))
 
 (comment
 
