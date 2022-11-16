@@ -56,9 +56,7 @@
         decode (m/decoder schema transformer)
         explain (m/explainer schema)]
     (fn [x]
-      (prn "1:" x)
       (let [value (decode x)]
-        (prn "2:" value)
         (when-not (valid? value)
           (m/-fail! ::invalid-input {:value value
                                      :schema schema
