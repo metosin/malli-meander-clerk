@@ -1,3 +1,5 @@
 .cpcache
 .clerk/cache
 .nrepl-port
+orders.csv
+.clj-kondo

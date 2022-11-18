@@ -51,24 +51,12 @@
 
 (clerk/code (mg/generate Order {:seed 3}))
 
-(defn coercer [schema transformer]
-  (let [valid? (m/validator schema)
-        decode (m/decoder schema transformer)
-        explain (m/explainer schema)]
-    (fn [x]
-      (let [value (decode x)]
-        (when-not (valid? value)
-          (m/-fail! ::invalid-input {:value value
-                                     :schema schema
-                                     :explain (explain value)}))
-        value))))
-
 (defn load-csv [file]
   (ds/rows (ds/->dataset file {:key-fn keyword, :parser-fn :string})))
 
 (require '[malli.transform :as mt])
 
-(def validate-input (coercer CSVOrder (mt/no-op-transformer)))
+(def validate-input (m/coercer CSVOrder))
 
 (->> (load-csv "orders.csv")
      (map validate-input)
@@ -107,7 +95,7 @@
      (clerk/code))
 
 (def validate-output
-  (coercer
+  (m/coercer
    Order
    (mt/transformer
     (mt/string-transformer)
@@ -164,15 +152,15 @@
 
 (defn transformer [{:keys [registry mappings]} source-transformer target-transformer]
   (let [{:keys [source target]} mappings
-        xf (comp (map (coercer (get registry source) source-transformer))
+        xf (comp (map (m/coercer (get registry source) source-transformer))
                  (map (matcher mappings))
-                 (map (coercer (get registry target) target-transformer)))]
+                 (map (m/coercer (get registry target) target-transformer)))]
     (fn [data] (into [] xf data))))
 
 (def pipeline
   (transformer
    transformation
-   (mt/no-op-transformer)
+   nil
    (mt/transformer
     (mt/string-transformer)
     (mt/default-value-transformer))))
