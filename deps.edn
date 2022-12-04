@@ -7,4 +7,8 @@
                        :sha "470d45b1dc4e0adb7e66b8d81bb754a49348b4e3"}
         techascent/tech.ml.dataset {:mvn/version "6.103"}
         hato/hato {:mvn/version "0.9.0"}
-        criterium/criterium {:mvn/version "0.4.6"}}}
+        criterium/criterium {:mvn/version "0.4.6"}}
+ :aliases
+ {:nextjournal/clerk
+  {:exec-fn nextjournal.clerk/build!
+   :exec-args {:paths ["notebooks/demo.clj"]}}}}
